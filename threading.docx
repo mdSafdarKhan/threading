@@ -1,0 +1,406 @@
+The Main Thread
+	When a Java program starts up, one thread begins running immediately. This is usually called the main thread. The main thread is important for two reasons:
+		1.	It is the thread from which other “child” threads will be spawned.
+		2.	Often, it must be the last thread to finish execution because it performs various shutdown actions.
+
+Creating a Thread
+	Java defines two ways in which this can be accomplished:
+		1.	You can implement the Runnable interface.
+		2.	You can extend the Thread class, itself. 
+
+Using isAlive( ) and join( )
+	Two ways exist to determine whether a thread has finished
+		1.	First, you can call isAlive( ) on the thread. 
+		2.	Second, the method that you will more commonly use to wait for a thread to finish is called join(). This method waits until the thread on which it is called terminates. Its name comes from the concept of the calling thread waiting until the specified thread joins it. As you can see, after the calls to join() return, the threads have stopped executing.
+
+Thread Priorities
+	1.	To set a thread’s priority, use the setPriority( ) method, which is a member of Thread.
+	2.	The value of level must be within the range MIN_PRIORITY and MAX_PRIORITY. Currently, these values are 1 and 10, respectively. To return a thread to default priority, specify NORM_PRIORITY, which is currently 5.
+
+Synchronization
+	When two or more threads need access to a shared resource, they need some way to ensure that the resource will be used by only one thread at a time. The process by which this is achieved is called synchronization.
+
+	Key to synchronization is the concept of the monitor. A monitor is an object that is used as a mutually exclusive lock. Only one thread can own a monitor at a given time. When a thread acquires a lock, it is said to have entered the monitor. All other threads attempting to enter the locked monitor will be suspended until the first thread exits the monitor. These other threads are said to be waiting for the monitor. A thread that owns a monitor can reenter the same monitor if it so desires.
+
+	You can synchronize your code in either of two ways
+		1.	Using Synchronized Methods
+		2.	The synchronized Statement
+
+Using Synchronized Methods
+	Synchronization is easy in Java, because all objects have their own implicit monitor associated with them. To enter an object’s monitor, just call a method that has been modified with the synchronized keyword. While a thread is inside a synchronized method, all other threads that try to call it (or any other synchronized method) on the same instance have to wait. To exit the monitor and relinquish control of the object to the next waiting thread, the owner of the monitor simply returns from the synchronized method.
+
+	To understand the need for synchronization, let’s begin with a simple example that does not use it—but should. The following program has three simple classes. The first one, Callme, has a single method named call(). The call() method takes a String parameter called msg. This method tries to print the msg string inside of square brackets. The interesting thing to notice is that after call() prints the opening bracket and the msg string, it calls Thread.sleep(1000), which pauses the current thread for one second.
+
+	The constructor of the next class, Caller, takes a reference to an instance of the Callme class and a String, which are stored in target and msg, respectively. The constructor also creates a new thread that will call this object’s run( ) method. The thread is started immediately. The run( ) method of Caller calls the call( ) method on the target instance of Callme, passing in the msg string. Finally, the Synch class starts by creating a single instance of Callme, and three instances of Caller, each with a unique message string. The same instance of Callme is passed to each Caller.
+
+The synchronized Statement
+	While creating synchronized methods within classes that you create is an easy and effective means of achieving synchronization, it will not work in all cases. To understand why, consider the following. Imagine that you want to synchronize access to objects of a class that was not designed for multithreaded access. That is, the class does not use synchronized methods. Further, this class was not created by you, but by a third party, and you do not have access to the source code. Thus, you can’t add synchronized to the appropriate methods within the class. How can access to an object of this class be synchronized? Fortunately, the solution to this problem is quite easy: You simply put calls to the methods defined by this class inside a synchronized block.
+
+	This is the general form of the synchronized statement:
+		synchronized(objRef) {
+			// statements to be synchronized
+		}
+
+Interthread Communication
+	The preceding examples unconditionally blocked other threads from asynchronous access to certain methods. This use of the implicit monitors in Java objects is powerful, but you can achieve a more subtle level of control through interprocess communication. As you will see, this is especially easy in Java.
+	
+	As discussed earlier, multithreading replaces event loop programming by dividing your tasks into discrete, logical units. Threads also provide a secondary benefit: they do away with polling. Polling is usually implemented by a loop that is used to check some condition repeatedly. Once the condition is true, appropriate action is taken. This wastes CPU time. For example, consider the classic queuing problem, where one thread is producing some data, and another is consuming it. To make the problem more interesting, suppose that the producer has to wait until the consumer is finished before it generates more data. In a polling system, the consumer would waste many CPU cycles while it waited for the producer to produce. Once the producer was finished, it would start polling, wasting more CPU cycles waiting for the consumer to finish, and so on. Clearly, this situation is undesirable.
+
+	To avoid polling, Java includes an elegant interprocess communication mechanism via the wait(), notify( ), and notifyAll( ) methods. These methods are implemented as final methods in Object, so all classes have them. All three methods can be called only from within a synchronized context. Although conceptually advanced from a computer science perspective, the rules for using these methods are actually quite simple:
+		1.	wait() tells the calling thread to give up the monitor and go to sleep until some other thread enters the same monitor and calls notify( ) or notifyAll( ).
+		2.	notify() wakes up a thread that called wait( ) on the same object.
+		3.	notifyAll() wakes up all the threads that called wait( ) on the same object. One of the threads will be granted access.
+
+Deadlock
+	A special type of error that you need to avoid that relates specifically to multitasking. Occurs when two threads have a circular dependency on a pair of synchronized objects.
+
+	For example, suppose one thread enters the monitor on object X and another thread enters the monitor on object Y. If the thread in X tries to call any synchronized method on Y, it will block as expected. However, if the thread in Y, in turn, tries to call any synchronized method on X, the thread waits forever, because to access X, it would have to release its own lock on Y so that the first thread could complete.
+
+	To understand deadlock fully, it is useful to see it in action. The next example creates two classes, A and B, with methods foo() and bar( ), respectively, which pause briefly before trying to call a method in the other class. The main class, named Deadlock, creates an A and a B instance, and then starts a second thread to set up the deadlock condition. The foo() and bar( ) methods use sleep( ) as a way to force the deadlock condition to occur.
+
+Suspending, Resuming, and Stopping Threads
+	Sometimes, suspending execution of a thread is useful. For example, a separate thread can be used to display the time of day. If the user doesn’t want a clock, then its thread can be suspended. Whatever the case, suspending a thread is a simple matter. Once suspended, restarting the thread is also a simple matter.
+
+	The mechanisms to suspend, stop, and resume threads differ between early versions of Java, such as Java 1.0, and modern versions, beginning with Java 2. Prior to Java 2, a program used suspend( ), resume( ), and stop( ), which are methods defined by Thread, to pause, restart, and stop the execution of a thread. Although these methods seem to be a perfectly reasonable and convenient approach to managing the execution of threads, they must not be used for new Java programs. Here’s why. The suspend( ) method of the Thread class was deprecated by Java 2 several years ago. This was done because suspend( ) can sometimes cause serious system failures. Assume that a thread has obtained locks on critical data structures. If that thread is suspended at that point, those locks are not relinquished. Other threads that may be waiting for those resources can be deadlocked.
+
+	The resume( ) method is also deprecated. It does not cause problems, but cannot be used without the suspend( ) method as its counterpart.
+
+	The stop( ) method of the Thread class, too, was deprecated by Java 2. This was done because this method can sometimes cause serious system failures. Assume that a thread is writing to a critically important data structure and has completed only part of its changes. If that thread is stopped at that point, that data structure might be left in a corrupted state. The trouble is that stop( ) causes any lock the calling thread holds to be released. Thus, the corrupted data might be used by another thread that is waiting on the same lock.
+
+	The following example illustrates how the wait( ) and notify( ) methods that are inherited from Object can be used to control the execution of a thread. Let us consider its operation. The NewThread class contains a boolean instance variable named suspendFlag, which is used to control the execution of the thread. It is initialized to false by the constructor. The run( ) method contains a synchronized statement block that checks suspendFlag. If that variable is true, the wait( ) method is invoked to suspend the execution of the thread. The mysuspend( ) method sets suspendFlag to true. The myresume( ) method sets suspendFlag to false and invokes notify( ) to wake up the thread. Finally, the main( ) method has been modified to invoke the mysuspend( ) and myresume( ) methods.
+
+Obtaining A Thread’s State
+	As mentioned earlier in this chapter, a thread can exist in a number of different states. You can obtain the current state of a thread by calling the getState( ) method defined by Thread. It is shown here:
+
+	Thread.State ts = thrd.getState();
+	if(ts == Thread.State.RUNNABLE) // ...
+
+	BLOCKED...........................A thread that has suspended execution because it is waiting to acquire a lock.
+	NEW....................................A thread that has not begun execution.
+	RUNNABLE........................A thread that either is currently executing or will execute when it gains access to the CPU.
+	TERMINATED....................A thread that has completed execution.
+	TIMED_WAITING.............A thread that has suspended execution for a specified period of time, such as when it has called sleep( ). This state is also entered when a timeout version of wait( ) or join( ) is called.
+	WAITING............................A thread that has suspended execution because it is waiting for some action to occur. For example, it is waiting because of a call to a non-timeout version of wait( ) or join( ).
+
+Using Multithreading
+	The key to utilizing Java’s multithreading features effectively is to think concurrently rather than serially. For example, when you have two subsystems within a program that can execute concurrently, make them individual threads. With the careful use of multithreading, you can create very efficient programs. A word of caution is in order, however: If you create too many threads, you can actually degrade the performance of your program rather than enhance it. Remember, some overhead is associated with context switching. If you create too many threads, more CPU time will be spent changing contexts than executing your program! One last point: To create compute-intensive applications that can automatically scale to make use of the available processors in a multi-core system, consider using the new Fork/Join Framework, which is described in Chapter 28.
+
+	Synchronizers offer high-level ways of synchronizing the interactions between multiple threads. The synchronizer classes defined by java.util.concurrent are
+
+		•	Semaphore: Implements the classic semaphore.
+		•	CountDownLatch: Waits until a specified number of events have occurred.
+		•	CyclicBarrier: Enables a group of threads to wait at a predefined execution point.
+		•	Exchanger: Exchanges data between two threads.
+		•	Phaser: Synchronizes threads that advance through multiple phases of an operation.
+
+	Executors manage thread execution. At the top of the executor hierarchy is the Executor interface, which is used to initiate a thread. ExecutorService extends Executor and provides methods that manage execution. There are three implementations of ExecutorService: ThreadPoolExecutor, ScheduledThreadPoolExecutor, and ForkJoinPool. java.util.concurrent also defines the Executors utility class, which includes a number of static methods that simplify the creation of various executors.
+
+	Related to executors are the Future and Callable interfaces. A Future contains a value that is returned by a thread after it executes. Thus, its value becomes defined “in the future,” when the thread terminates. Callable defines a thread that returns a value.
+
+	java.util.concurrent defines several concurrent collection classes, including ConcurrentHashMap, ConcurrentLinkedQueue, and CopyOnWriteArrayList. These offer concurrent alternatives to their related classes defined by the Collections Framework.
+
+	The Fork/Join Framework supports parallel programming. Its main classes are ForkJoinTask, ForkJoinPool, RecursiveTask, and RecursiveAction.
+
+	Finally, to better handle thread timing, java.util.concurrent defines the TimeUnit enumeration.
+
+	java.util.concurrent.atomic facilitates the use of variables in a concurrent environment. It provides a means of efficiently updating the value of a variable without the use of locks. This is accomplished through the use of classes, such as AtomicInteger and AtomicLong, and methods, such as compareAndSet( ), decrementAndGet( ), and getAndSet( ). These methods execute as a single, non-interruptible operation.
+
+	java.util.concurrent.locks provides an alternative to the use of synchronized methods. At the core of this alternative is the Lock interface, which defines the basic mechanism used to acquire and relinquish access to an object. The key methods are lock( ), tryLock( ), and unlock( ). The advantage to using these methods is greater control over synchronization.
+
+Semaphore
+	The synchronization object that many readers will immediately recognize is Semaphore, which implements a classic semaphore. A semaphore controls access to a shared resource through the use of a counter. If the counter is greater than zero, then access is allowed. If it is zero, then access is denied. What the counter is counting are permits that allow access to the shared resource. Thus, to access the resource, a thread must be granted a permit from the semaphore. Semaphore has the two constructors shown here:
+		
+		Semaphore(int num)
+		Semaphore(int num, boolean how)
+		
+	Here, num specifies the initial permit count. Thus, num specifies the number of threads that can access a shared resource at any one time. If num is one, then only one thread can access the resource at any one time. By default, waiting threads are granted a permit in an undefined order. By setting how to true, you can ensure that waiting threads are granted a permit in the order in which they requested access. To acquire a permit, call the acquire( ) method, which has these two forms:
+
+		void acquire( ) throws InterruptedException
+		void acquire(int num) throws InterruptedException
+		
+	The first form acquires one permit. The second form acquires num permits. Most often, the first form is used. If the permit cannot be granted at the time of the call, then the invoking thread suspends until the permit is available. To release a permit, call release( ), which has these two forms:
+		
+		void release( )
+		void release(int num)
+
+	The first form releases one permit. The second form releases the number of permits specified by num.
+
+CountDownLatch
+	Sometimes you will want a thread to wait until one or more events have occurred. To handle such a situation, the concurrent API supplies CountDownLatch. A CountDownLatch is initially created with a count of the number of events that must occur before the latch is released. Each time an event happens, the count is decremented. When the count reaches zero, the latch opens. CountDownLatch has the following constructor:
+		
+		CountDownLatch(int num)
+
+	Here, num specifies the number of events that must occur in order for the latch to open. To wait on the latch, a thread calls await( ), which has the forms shown here:
+		void await( ) throws InterruptedException
+		boolean await(long wait, TimeUnit tu) throws InterruptedException
+		
+	The first form waits until the count associated with the invoking CountDownLatch reaches zero. The second form waits only for the period of time specified by wait. The units represented by wait are specified by tu, which is an object the TimeUnit enumeration. It returns false if the time limit is reached and true if the countdown reaches zero
+
+	To signal an event, call the countDown( ) method, shown next:
+		
+		void countDown( )
+	
+	Each call to countDown( ) decrements the count associated with the invoking object.
+
+CyclicBarrier
+	A situation not uncommon in concurrent programming occurs when a set of two or more threads must wait at a predetermined execution point until all threads in the set have reached that point. To handle such a situation, the concurrent API supplies the CyclicBarrier class. It enables you to define a synchronization object that suspends until the specified number of threads has reached the barrier point. CyclicBarrier has the following two constructors:
+
+		CyclicBarrier(int numThreads)
+		CyclicBarrier(int numThreads, Runnable action)
+
+	Here, numThreads specifies the number of threads that must reach the barrier before execution continues. In the second form, action specifies a thread that will be executed when the barrier is reached.
+
+	Here is the general procedure that you will follow to use CyclicBarrier. First, create a CyclicBarrier object, specifying the number of threads that you will be waiting for. Next, when each thread reaches the barrier, have it call await( ) on that object. This will pause execution of the thread until all of the other threads also call await( ). Once the specified number of threads has reached the barrier, await( ) will return and execution will resume. Also, if you have specified an action, then that thread is executed. The await( ) method has the following two forms:
+		
+		int await( ) throws InterruptedException, BrokenBarrierException
+		int await(long wait, TimeUnit tu) throws InterruptedException, BrokenBarrierException, TimeoutException
+		
+	The first form waits until all the threads have reached the barrier point. The second form waits only for the period of time specified by wait. The units represented by wait are specified by tu. Both forms return a value that indicates the order that the threads arrive at the barrier point. The first thread returns a value equal to the number of threads waited upon minus one. The last thread returns zero. A CyclicBarrier can be reused because it will release waiting threads each time the specified number of threads calls await( ).
+
+Exchanger
+	Perhaps the most interesting of the synchronization classes is Exchanger. It is designed to simplify the exchange of data between two threads. The operation of an Exchanger is astoundingly simple: it simply waits until two separate threads call its exchange( ) method. When that occurs, it exchanges the data supplied by the threads. This mechanism is both elegant and easy to use. Uses for Exchanger are easy to imagine. For example, one thread might prepare a buffer for receiving information over a network connection. Another thread might fill that buffer with the information from the connection. The two threads work together so that each time a new buffer is needed, an exchange is made. The only method defined by Exchanger is exchange( ), which has the two forms shown here:
+		
+		V exchange(V objRef) throws InterruptedException
+		V exchange(V objRef, long wait, TimeUnit tu) throws InterruptedException, TimeoutException
+
+	Here, objRef is a reference to the data to exchange. The data received from the other thread is returned. The second form of exchange( ) allows a time-out period to be specified. The key point about exchange( ) is that it won’t succeed until it has been called on the same Exchanger object by two separate threads. Thus, exchange( ) synchronizes the exchange of the data.
+
+Phaser
+	Another synchronization class is called Phaser. Its primary purpose is to enable the synchronization of threads that represent one or more phases of activity. For example, you might have a set of threads that implement three phases of an order-processing application. In the first phase, separate threads are used to validate customer information, check inventory, and confirm pricing. When that phase is complete, the second phase has two threads that compute shipping costs and all applicable tax. After that, a final phase confirms payment and determines estimated shipping time. In the past, to synchronize the multiple threads that comprise this scenario would require a bit of work on your part. With the inclusion of Phaser, the process is now much easier. Phaser defines four constructors. Here are the two used in this section:
+
+		Phaser( )
+		Phaser(int numParties)
+		
+	The first creates a phaser that has a registration count of zero. The second sets the registration count to numParties. The term party is often applied to the objects that register with a phaser. Although often there is a one-to-correspondence between the number of registrants and the number of threads being synchronized, this is not required. In both cases, the current phase is zero. That is, when a Phaser is created, it is initially at phase zero.
+
+	In general, here is how you use Phaser. First, create a new instance of Phaser. Next, register one or more parties with the phaser, either by calling register( ) or by specifying the number of parties in the constructor. For each registered party, have the phaser wait until all registered parties complete a phase. A party signals this by calling one of a variety of methods supplied by Phaser, such as arrive( ) or arriveAndAwaitAdvance( ). After all parties have arrived, the phase is complete, and the phaser can move on to the next phase (if there is one) or terminate.
+
+	Skipping phaser for now…
+
+Using an Executor
+	The concurrent API supplies a feature called an executor that initiates and controls the execution of threads. As such, an executor offers an alternative to managing threads through the Thread class. At the core of an executor is the Executor interface. It defines the following method:
+
+		void execute(Runnable thread)
+		
+	The thread specified by thread is executed. Thus, execute( ) starts the specified thread. The ExecutorService interface extends Executor by adding methods that help manage and control the execution of threads. For example, ExecutorService defines shutdown( ), shown here, which stops the invoking ExecutorService.
+		
+		void shutdown( )
+
+	ExecutorService also defines methods that execute threads that return results, that execute a set of threads, and that determine the shutdown status. We will look at several of these methods a little later. Also defined is the interface ScheduledExecutorService, which extends ExecutorService to support the scheduling of threads.
+
+	The concurrent API defines three predefined executor classes: ThreadPoolExecutor and ScheduledThreadPoolExecutor, and ForkJoinPool. ThreadPoolExecutor implements the Executor and ExecutorService interfaces and provides support for a managed pool of threads. ScheduledThreadPoolExecutor also implements the ScheduledExecutorService interface to allow a pool of threads to be scheduled. ForkJoinPool implements the Executor and ExecutorService interfaces and is used by the Fork/Join Framework. It is described later in this chapter. Executors utility class
+	
+		static ExecutorService newCachedThreadPool( )
+		static ExecutorService newFixedThreadPool(int numThreads)
+		static ScheduledExecutorService newScheduledThreadPool(int numThreads)
+
+	newCachedThreadPool( ) creates a thread pool that adds threads as needed but reuses threads if possible. newFixedThreadPool( ) creates a thread pool that consists of a specified number of threads. newScheduledThreadPool( ) creates a thread pool that supports thread scheduling. Each returns a reference to an ExecutorService that can be used to manage the pool.
+
+Using Callable and Future
+	One of the most interesting features of the concurrent API is the Callable interface. This interface represents a thread that returns a value. An application can use Callable objects to compute results that are then returned to the invoking thread. This is a powerful mechanism because it facilitates the coding of many types of numerical computations in which partial results are computed simultaneously. It can also be used to run a thread that returns a status code that indicates the successful completion of the thread. Callable is a generic interface that is defined like this:
+		
+		interface Callable<V>
+
+	Callable defines only one method, call( ), which is shown here:
+		
+		V call( ) throws Exception
+
+	A Callable task is executed by an ExecutorService, by calling its submit( ) method. There are three forms of submit( ), but only one is used to execute a Callable. It is shown here:
+
+		<T> Future<T> submit(Callable<T> task)
+
+	Here, task is the Callable object that will be executed in its own thread. The result is returned through an object of type Future. To obtain the returned value, you will call Future’s get( ) method, which has these two forms:
+
+		V get( ) throws InterruptedException, ExecutionException
+		V get(long wait, TimeUnit tu) throws InterruptedException, ExecutionException, TimeoutException
+
+The TimeUnit Enumeration
+	The concurrent API defines several methods that take an argument of type TimeUnit, which indicates a time-out period. TimeUnit is an enumeration that is used to specify the granularity (or resolution) of the timing. TimeUnit is defined within java.util.concurrent. It can be one of the following values:
+		
+		DAYS
+		HOURS
+		MINUTES
+		SECONDS
+		MICROSECONDS
+		MILLISECONDS
+		NANOSECONDS
+		
+	Although TimeUnit lets you specify any of these values in calls to methods that take a timing argument, there is no guarantee that the system is capable of the specified resolution. Example
+		
+		Future<String> f = Excecuter.submit(callable);
+		f.get(10, TimeUnit.MILLISECONDS)
+
+	Skipping TimeUnit for now…
+
+The Concurrent Collections
+	•	ArrayBlockingQueue
+	•	PriorityBlockingQueue
+	•	ConcurrentHashMap
+	•	CopyOnWriteArrayList
+	•	CopyOnWriteArraySet
+	•	Etc.
+
+	These offer concurrent alternatives to their related classes defined by the Collections Framework. These collections work much like the other collections except that they provide concurrency support. Programmers familiar with the Collections Framework will have no trouble using these concurrent collections. 
+
+	Skipping concurrent collections for now…
+
+Locks
+	The java.util.concurrent.locks package provides support for locks, which are objects that offer an alternative to using synchronized to control access to a shared resource. In general, here is how a lock works. Before accessing a shared resource, the lock that protects that resource is acquired. When access to the resource is complete, the lock is released. If a second thread attempts to acquire the lock when it is in use by another thread, the second thread will suspend until the lock is released. In this way, conflicting access to a shared resource is prevented.
+
+	Locks are particularly useful when multiple threads need to access the value of shared data. For example, an inventory application might have a thread that first confirms that an item is in stock and then decreases the number of items on hand as each sale occurs. If two or more of these threads are running, then without some form of synchronization, it would be possible for one thread to be in the middle of a transaction when the second thread begins its transaction. The result could be that both threads would assume that adequate inventory exists, even if there is only sufficient inventory on hand to satisfy one sale. In this type of situation, a lock offers a convenient means of handling the needed synchronization.
+
+	The Lock interface defines a lock. The methods defined by Lock are shown in Table 28-1. In general, to acquire a lock, call lock( ). If the lock is unavailable, lock( ) will wait. To release a lock, call unlock( ). To see if a lock is available, and to acquire it if it is, call tryLock( ). This method will not wait for the lock if it is unavailable. Instead, it returns true if the lock is acquired and false otherwise. The newCondition( ) method returns a Condition object associated with the lock. Using a Condition, you gain detailed control of the lock through methods such as await( ) and signal( ), which provide functionality similar to Object.wait( ) and Object.notify( ).
+
+	java.util.concurrent.locks supplies an implementation of Lock called ReentrantLock. ReentrantLock implements a reentrant lock, which is a lock that can be repeatedly entered by the thread that currently holds the lock. Of course, in the case of a thread reentering a lock, all calls to lock( ) must be offset by an equal number of calls to unlock( ). Otherwise, a thread seeking to acquire the lock will suspend until the lock is not in use.
+
+	java.util.concurrent.locks also defines the ReadWriteLock interface. This interface specifies a lock that maintains separate locks for read and write access. This enables multiple locks to be granted for readers of a resource as long as the resource is not being written. ReentrantReadWriteLock provides an implementation of ReadWriteLock.
+
+	NOTE JDK 8 adds a specialized lock called StampedLock. It does not implement the Lock or ReadWriteLock interfaces. It does, however, provide a mechanism that enables aspects of it to be used like a Lock or ReadWriteLock.
+
+Atomic Operations
+	java.util.concurrent.atomic offers an alternative to the other synchronization features when reading or writing the value of some types of variables. This package offers methods that get, set, or compare the value of a variable in one uninterruptible (that is, atomic) operation.
+
+	This means that no lock or other synchronization mechanism is required. Atomic operations are accomplished through the use of classes, such as AtomicInteger and AtomicLong, and methods such as get( ), set( ), compareAndSet( ), decrementAndGet( ), and getAndSet( ), which perform the action indicated by their names.
+
+	In general, the atomic operations offer a convenient (and possibly more efficient) alternative to the other synchronization mechanisms when only a single variable is involved.
+
+Parallel Programming via the Fork/Join Framework
+	The Fork/Join Framework enhances multithreaded programming in two important ways. First, it simplifies the creation and use of multiple threads. Second, it automatically makes use of multiple processors. In other words, by using the Fork/Join Framework you enable your applications to automatically scale to make use of the number of available processors. These two features make the Fork/Join Framework the recommended approach to multithreading when parallel processing is desired.
+
+	Before continuing, it is important to point out the distinction between traditional multithreading and parallel programming. In the past, most computers had a single CPU and multithreading was primarily used to take advantage of idle time, such as when a program is waiting for user input. Using this approach, one thread can execute while another is waiting. In other words, on a single-CPU system, multithreading is used to allow two or more tasks to share the CPU. This type of multithreading is typically supported by an object of type Thread (as described in Chapter 11). Although this type of multithreading will always remain quite useful, it was not optimized for situations in which two or more CPUs are available (multicore computers).
+
+The Main Fork/Join Classes
+	The Fork/Join Framework is packaged in java.util.concurrent. A ForkJoinPool manages the execution of ForkJoinTasks. ForkJoinTask is an abstract class that is extended by the abstract classes RecursiveAction and RecursiveTask. Typically, your code will extend these classes to create a task.
+
+		ForkJoinTask<V>
+
+	ForkJoinTasks are executed by threads managed by a thread pool of type ForkJoinPool. This mechanism allows a large number of tasks to be managed by a small number of actual threads. Thus, ForkJoinTasks are very efficient when compared to threads. ForkJoinTask defines many methods. At the core are fork( ) and join( ), shown here:
+
+		final ForkJoinTask<V> fork( )
+		final V join( )
+
+	Skipping ForkJoinTask class for now…
+
+RecursiveAction
+	A subclass of ForkJoinTask is RecursiveAction. This class encapsulates a task that does not return a result. Typically, your code will extend RecursiveAction to create a task that has a void return type. RecursiveAction specifies four methods, but only one is usually of interest: the abstract method called compute( ). When you extend RecursiveAction to create a concrete class, you will put the code that defines the task inside compute( ). The compute( ) method represents the computational portion of the task.
+
+		protected abstract void compute( )
+
+	In general, RecursiveAction is used to implement a recursive, divide-and-conquer strategy for tasks that don’t return results.
+		
+		RecursiveTask<V>
+
+	Another subclass of ForkJoinTask is RecursiveTask<V>. This class encapsulates a task that returns a result. The result type is specified by V. Typically, your code will extend RecursiveTask<V> to create a task that returns a value. Like RecursiveAction, it too specifies four methods, but often only the abstract compute( ) method is used, which represents the computational portion of the task. When you extend RecursiveTask<V> to create a concrete class, put the code that represents the task inside compute( ). This code must also return the result of the task. The compute( ) method is defined by RecursiveTask<V> like this:
+
+		protected abstract V compute( )
+
+	Notice that compute( ) is protected and abstract. This means that it must be implemented by a subclass. When implemented, it must return the result of the task.
+
+ForkJoinPool
+	The execution of ForkJoinTasks takes place within a ForkJoinPool, which also manages the execution of the tasks. Therefore, in order to execute a ForkJoinTask, you must first have a ForkJoinPool. Beginning with JDK 8, there are two ways to acquire a ForkJoinPool. First, you can explicitly create one by using a ForkJoinPool constructor. Second, you can use what is referred to as the common pool. The common pool (which was added by JDK 8) is a static ForkJoinPool that is automatically available for your use. Each method is introduced here, beginning with manually constructing a pool. ForkJoinPool defines several constructors. Here are two commonly used ones:
+
+		ForkJoinPool( )
+		ForkJoinPool(int pLevel)
+		
+	The first creates a default pool that supports a level of parallelism equal to the number of processors available in the system. The second lets you specify the level of parallelism. Its value must be greater than zero and not more than the limits of the implementation. The level of parallelism determines the number of threads that can execute concurrently. As a result, the level of parallelism effectively determines the number of tasks that can be executed simultaneously. (Of course, the number of tasks that can execute simultaneously cannot exceed the number of processors.) It is important to understand that the level of parallelism does not, however, limit the number of tasks that can be managed by the pool. A ForkJoinPool can manage many more tasks than its level of parallelism. Also, the level of parallelism is only a target. It is not a guarantee.
+
+	After you have created an instance of ForkJoinPool, you can start a task in a number of different ways. The first task started is often thought of as the main task. Frequently, the main task begins subtasks that are also managed by the pool. One common way to begin a main task is to call invoke( ) on the ForkJoinPool. It is shown here:
+
+		<T> T invoke(ForkJoinTask<T> task)
+
+	This method begins the task specified by task, and it returns the result of the task. This means that the calling code waits until invoke( ) returns. To start a task without waiting for its completion, you can use execute( ). Here is one of its forms:
+		
+		void execute(ForkJoinTask<?> task)
+
+	In this case, task is started, but the calling code does not wait for its completion. Rather, the calling code continues execution asynchronously.
+
+	Beginning with JDK 8, it is not necessary to explicitly construct a ForkJoinPool because a common pool is available for your use. In general, if you are not using a pool that you explicitly created, then the common pool will automatically be used. Although it won’t always be necessary, you can obtain a reference to the common pool by calling commonPool( ), which is defined by ForkJoinPool. It is shown here:
+
+		static ForkJoinPool commonPool( )
+
+	A reference to the common pool is returned. The common pool provides a default level of parallelism. It can be set by use of a system property. (See the API documentation for details.) Typically, the default common pool is a good choice for many applications. Of course, you can always construct your own pool.
+
+	There are two basic ways to start a task using the common pool. First, you can obtain a reference to the pool by calling commonPool( ) and then use that reference to call invoke( ) or execute( ), as just described. Second, you can call ForkJoinTask methods such as fork( ) or invoke( ) on the task from outside its computational portion. In this case, the common pool will automatically be used. In other words, fork( ) and invoke( ) will start a task using the common pool if the task is not already running within a ForkJoinPool.
+
+	ForkJoinPool manages the execution of its threads using an approach called work-stealing. Each worker thread maintains a queue of tasks. If one worker thread’s queue is empty, it will take a task from another worker thread. This adds to overall efficiency and helps maintain a balanced load. (Because of demands on CPU time by other processes in the system, even two worker threads with identical tasks in their respective queues may not complete at the same time.)
+
+	One other point: ForkJoinPool uses daemon threads. A daemon thread is automatically terminated when all user threads have terminated. Thus, there is no need to explicitly shut down a ForkJoinPool. However, with the exception of the common pool, it is possible to do so by calling shutdown( ). The shutdown( ) method has no effect on the common pool.
+
+The Divide-and-Conquer Strategy
+	As a general rule, users of the Fork/Join Framework will employ a divide-and-conquer strategy that is based on recursion. This is why the two subclasses of ForkJoinTask are called RecursiveAction and RecursiveTask. It is anticipated that you will extend one of these classes when creating your own fork/join task.
+
+	The divide-and-conquer strategy is based on recursively dividing a task into smaller subtasks until the size of a subtask is small enough to be handled sequentially. For example, a task that applies a transform to each element in an array of N integers can be broken down into two subtasks in which each transforms half the elements in the array. That is, one subtask transforms the elements 0 to N/2, and the other transforms the elements N/2 to N. In turn, each subtask can be reduced to another set of subtasks, each transforming half of the remaining elements. This process of dividing the array will continue until a threshold is reached in which a sequential solution is faster than creating another division.
+
+	One of the keys to best employing the divide-and-conquer strategy is correctly selecting the threshold at which sequential processing (rather than further division) is used. Typically, an optimal threshold is obtained through profiling the execution characteristics. However, very significant speed-ups will still occur even when a less-than-optimal threshold is used. It is, however, best to avoid overly large or overly small thresholds. At the time of this writing, the Java API documentation for ForkJoinTask<T> states that, as a rule-of-thumb, a task should perform somewhere between 100 and 10,000 computational steps.
+
+	It is also important to understand that the optimal threshold value is also affected by how much time the computation takes. If each computational step is fairly long, then smaller thresholds might be better. Conversely, if each computational step is quite short, then larger thresholds could yield better results. For applications that are to be run on a known system, with a known number of processors, you can use the number of processors to make informed decisions about the threshold value. However, for applications that will be running on a variety of systems, the capabilities of which are not known in advance, you can make no assumptions about the execution environment.
+
+A Simple First Fork/Join Example
+	At this point, a simple example that demonstrates the Fork/Join Framework and the divide-and-conquer strategy will be helpful. Following is a program that transforms the elements in an array of double into their square roots. It does so via a subclass of RecursiveAction. Notice that it creates its own ForkJoinPool.
+
+Understanding the Impact of the Level of Parallelism
+	Before moving on, it is important to understand the impact that the level of parallelism has on the performance of a fork/join task and how the parallelism and the threshold interact. The program shown in this section lets you experiment with different degrees of parallelism and threshold values. Assuming that you are using a multicore computer, you can interactively observe the effect of these values.
+
+	In the preceding example, the default level of parallelism was used. However, you can specify the level of parallelism that you want. One way is to specify it when you create a ForkJoinPool using this constructor:
+
+		ForkJoinPool(int pLevel)
+
+	Here, pLevel specifies the level of parallelism, which must be greater than zero and less than the implementation defined limit.
+
+	The following program creates a fork/join task that transforms an array of doubles. The transformation is arbitrary, but it is designed to consume several CPU cycles. This was done to ensure that the effects of changing the threshold or the level of parallelism would be more clearly displayed. To use the program, specify the threshold value and the level of parallelism on the command line. The program then runs the tasks. It also displays the amount of time it takes the tasks to run. To do this, it uses System.nanoTime( ), which returns the value of the JVM’s high-resolution timer.
+
+An Example that Uses RecursiveTask<V>
+	The two preceding examples are based on RecursiveAction, which means that they concurrently execute tasks that do not return results. To create a task that returns a result, use RecursiveTask. In general, solutions are designed in the same manner as just shown. The key difference is that the compute( ) method returns a result. Thus, you must aggregate the results, so that when the first invocation finishes, it returns the overall result. Another difference is that you will typically start a subtask by calling fork( ) and join( ) explicitly (rather than implicitly by calling invokeAll( ), for example).
+
+	The following program demonstrates RecursiveTask. It creates a task called Sum that returns the summation of the values in an array of double. In this example, the array consists of 5,000 elements. However, every other value is negative. Thus, the first values in the array are 0, –1, 2, –3, 4, and so on. (So that this example will work with both JDK 7 and JDK 8, it creates its own pool. You might try changing it to use the common pool as an exercise.)
+
+Executing a Task Asynchronously
+	The preceding programs have called invoke( ) on a ForkJoinPool to initiate a task. This approach is commonly used when the calling thread must wait until the task has completed (which is often the case) because invoke( ) does not return until the task has terminated. However, you can start a task asynchronously. In this approach, the calling thread continues to execute. Thus, both the calling thread and the task execute simultaneously. To start a task asynchronously, use execute( ), which is also defined by ForkJoinPool. It has the two forms shown here:
+		
+		void execute(ForkJoinTask<?> task)
+		void execute(Runnable task)
+
+	In both forms, task specifies the task to run. Notice that the second form lets you specify a Runnable rather than a ForkJoinTask task. Thus, it forms a bridge between Java’s traditional approach to multithreading and the new Fork/Join Framework. It is important to remember that the threads used by a ForkJoinPool are daemon. Thus, they will end when the main thread ends. As a result, you may need to keep the main thread alive until the tasks have finished.
+
+Cancelling a Task
+	A task can be cancelled by calling cancel( ), which is defined by ForkJoinTask. It has this general form:
+
+		boolean cancel(boolean interuptOK)
+
+	It returns true if the task on which it was called is cancelled. It returns false if the task has ended or can’t be cancelled. At this time, the interruptOK parameter is not used by the default implementation. In general, cancel( ) is intended to be called from code outside the task because a task can easily cancel itself by returning.
+
+	You can determine if a task has been cancelled by calling isCancelled( ), as shown here:
+
+		final boolean isCancelled( )
+
+	It returns true if the invoking task has been cancelled prior to completion and false otherwise.
+
+Determining a Task’s Completion Status
+	In addition to isCancelled( ), which was just described, ForkJoinTask includes two other methods that you can use to determine a task’s completion status. The first is isCompletedNormally( ), which is shown here:
+
+		final boolean isCompletedNormally( )
+
+	It returns true if the invoking task completed normally, that is, if it did not throw an exception and it was not cancelled via a call to cancel( ). It returns false otherwise.
+
+	The second is isCompletedAbnormally( ), which is shown here:
+
+		final boolean isCompletedAbnormally( )
+
+	It returns true if the invoking task completed because it was cancelled or because it threw an exception. It returns false otherwise.
+
+Restarting a Task
+	Normally, you cannot rerun a task. In other words, once a task completes, it cannot be restarted. However, you can reinitialize the state of the task (after it has completed) so it can be run again. This is done by calling reinitialize( ), as shown here:
+
+		void reinitialize( )
+
+	This method resets the state of the invoking task. However, any modification made to any persistent data that is operated upon by the task will not be undone. For example, if the task modifies an array, then those modifications are not undone by calling reinitialize( ).
+
+Some Fork/Join Tips
+	Here are a few tips to help you avoid some of the more troublesome pitfalls associated with using the Fork/Join Framework. First, avoid using a sequential threshold that is too low. In general, erring on the high side is better than erring on the low side. If the threshold is too low, more time can be consumed generating and switching tasks than in processing the tasks. Second, usually it is best to use the default level of parallelism. If you specify a smaller number, it may significantly reduce the benefits of using the Fork/Join Framework.
+
+	In general, a ForkJoinTask should not use synchronized methods or synchronized blocks of code. Also, you will not normally want to have the compute( ) method use other types of synchronization, such as a semaphore. (The new Phaser can, however, be used when appropriate because it is compatible with the fork/join mechanism.) Remember, the main idea behind a ForkJoinTask is the divide-and-conquer strategy. Such an approach does not normally lend itself to situations in which outside synchronization is needed. Also, avoid situations in which substantial blocking will occur through I/O. Therefore, in general, a ForkJoinTask will not perform I/O. Simply put, to best utilize the Fork/Join Framework, a task should perform a computation that can run without outside blocking or synchronization.
+
+	One last point: Except under unusual circumstances, do not make assumptions about the execution environment that your code will run in. This means you should not assume that some specific number of processors will be available, or that the execution characteristics of your program won’t be affected by other processes running at the same time.
+
+The Concurrency Utilities Versus Java’s Traditional Approach
+	Given the power and flexibility found in the concurrency utilities, it is natural to ask the following question: Do they replace Java’s traditional approach to multithreading and synchronization? The answer is a resounding no! The original support for multithreading and the built-in synchronization features are still the mechanism that should be employed for many, many Java programs, applets, and servlets. For example, synchronized, wait( ), and notify( ) offer elegant solutions to a wide range of problems. However, when extra control is needed, the concurrency utilities are available to handle the chore. Furthermore, the Fork/Join Framework offers a powerful way to integrate parallel programming techniques into your more sophisticated applications.
